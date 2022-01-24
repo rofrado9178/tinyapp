@@ -58,13 +58,18 @@ app.get("/urls/new", (req, res) => {
   const templateVars = {};
   res.render("urls_new");
 });
-
+//use the shortURL as a key to open the long url as a value
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {
     shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL],
   };
   res.render("urls_show", templateVars);
+});
+
+app.get("/u/:shortURL", (req, res) => {
+  const longURL = urlDatabase[req.params.shortURL];
+  res.redirect(longURL);
 });
 
 //listening port 8080 and console log the port everytime we connect to the server
