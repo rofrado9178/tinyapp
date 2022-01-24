@@ -32,12 +32,16 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
-app.get("/urls/:shortUrl", (req, res) => {
+app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {
     shortURL: req.params.shortURL,
-    longURL: req.params.longURL,
+    longURL: urlDatabase[req.params.shortURL],
   };
   res.render("urls_show", templateVars);
+});
+
+app.get("/example/:apple/:pear", (req, res) => {
+  console.log(req.params);
 });
 
 //listening port 8080 and console log the port everytime we connect to the server
