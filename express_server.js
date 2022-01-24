@@ -31,7 +31,8 @@ const generateRandomString = () => {
 app.post("/urls", (req, res) => {
   const shortRandomUrl = generateRandomString();
   urlDatabase[shortRandomUrl] = req.body.longURL;
-  res.render("urls_index");
+  console.log(urlDatabase);
+  res.redirect(`/urls/${shortRandomUrl}`);
 });
 
 //get request from server for several path
