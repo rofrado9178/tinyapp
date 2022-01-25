@@ -79,6 +79,10 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 });
 
 //update post
+app.post("/urls/:shortURL", (req, res) => {
+  urlDatabase[req.params.shortURL] = req.body.longURL;
+  res.redirect(`/urls/${req.params.shortURL}`);
+});
 
 //listening port 8080 and console log the port everytime we connect to the server
 app.listen(PORT, () => {
