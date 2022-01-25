@@ -28,13 +28,6 @@ const generateRandomString = () => {
   return alphanumeric;
 };
 
-app.post("/urls", (req, res) => {
-  const shortRandomUrl = generateRandomString();
-  urlDatabase[shortRandomUrl] = req.body.longURL;
-  console.log(urlDatabase);
-  res.redirect(`/urls/${shortRandomUrl}`);
-});
-
 //get request from server for several path
 app.get("/", (req, res) => {
   res.send("Hello");
@@ -52,6 +45,13 @@ app.get("/hello", (req, res) => {
 app.get("/urls", (req, res) => {
   const templateVars = { urls: urlDatabase };
   res.render("urls_index", templateVars);
+});
+//post request and generate random shortURL and store it to database, and redirect the page
+app.post("/urls", (req, res) => {
+  const shortRandomUrl = generateRandomString();
+  urlDatabase[shortRandomUrl] = req.body.longURL;
+  console.log(urlDatabase);
+  res.redirect(`/urls/${shortRandomUrl}`);
 });
 
 app.get("/urls/new", (req, res) => {
@@ -71,6 +71,14 @@ app.get("/u/:shortURL", (req, res) => {
   const longURL = urlDatabase[req.params.shortURL];
   res.redirect(longURL);
 });
+
+//delete post
+app.post("/urls/:shortURL/delete", (req, res) => {
+  delete urlDatabase[req.params.shortURL];
+  res.redirect("/urls");
+});
+
+//update post
 
 //listening port 8080 and console log the port everytime we connect to the server
 app.listen(PORT, () => {
