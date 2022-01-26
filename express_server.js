@@ -68,13 +68,13 @@ app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   if (email === "" || password === "") {
-    return res.statusCode(400);
+    return res.status(400).send("Email or Password cannot be empty!");
   }
 
   for (const key in users) {
     if (users[key].email === email) {
       console.log("Email already exists");
-      return res.send("Email already exists");
+      return res.status(400).send("Email already exists");
     }
   }
   users[newID] = {
