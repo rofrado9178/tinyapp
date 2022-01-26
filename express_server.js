@@ -2,11 +2,15 @@
 const { Template } = require("ejs");
 const express = require("express");
 const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
 const app = express();
 const PORT = 8080;
 
 //user body parser
 app.use(bodyParser.urlencoded({ extended: true }));
+
+//use cookieparser
+app.use(cookieParser());
 
 //set engine so we can read ejs file from views folder and render it as html file
 app.set("view engine", "ejs");
@@ -43,7 +47,7 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase };
+  const templateVars = { urls: urlDatabase, username: req.cookies["username"] };
   res.render("urls_index", templateVars);
 });
 //post request and generate random shortURL and store it to database, and redirect the page
@@ -54,15 +58,28 @@ app.post("/urls", (req, res) => {
   res.redirect(`/urls/${shortRandomUrl}`);
 });
 
+//manage login and cookies
+app.post("/login", (req, res) => {
+  res.cookie("username", req.body.username);
+  res.redirect("/urls");
+});
+
+app.post("/logout", (req, res) => {
+  res.clearCookie("username");
+  res.redirect("/urls");
+});
+
+//update
 app.get("/urls/new", (req, res) => {
-  const templateVars = {};
-  res.render("urls_new");
+  const templateVars = { urls: urlDatabase, username: req.cookies["username"] };
+  res.render("urls_new", templateVars);
 });
 //use the shortURL as a key to open the long url as a value
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {
     shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL],
+    username: req.cookies["username"],
   };
   res.render("urls_show", templateVars);
 });
