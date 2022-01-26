@@ -21,6 +21,19 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com",
 };
 
+const users = {
+  "userRandomID": {
+    id: "userRandomID",
+    email: "user@example.com",
+    password: "purple-monkey-dinosaur",
+  },
+  "user2RandomID": {
+    id: "user2RandomID",
+    email: "user2@example.com",
+    password: "dishwasher-funk",
+  },
+};
+
 //generate 6 random alpha numeric function
 const generateRandomString = () => {
   const possible =
@@ -31,23 +44,54 @@ const generateRandomString = () => {
   }
   return alphanumeric;
 };
+//example
+// app.get("/", (req, res) => {
+//   res.send("Hello");
+// });
+
+// app.get("/urls.json", (req, res) => {
+//   res.json(urlDatabase);
+// });
+
+// app.get("/hello", (req, res) => {
+//   const templateVars = { greeting: "Hello World!" };
+//   res.render("hello_world", templateVars);
+// });
 
 //get request from server for several path
-app.get("/", (req, res) => {
-  res.send("Hello");
+app.get("/register", (req, res) => {
+  res.render("register");
 });
 
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
-});
+app.post("/register", (req, res) => {
+  const newID = generateRandomString();
+  const email = req.body.email;
+  const password = req.body.password;
+  if (email === "" || password === "") {
+    return res.statusCode(400);
+  }
 
-app.get("/hello", (req, res) => {
-  const templateVars = { greeting: "Hello World!" };
-  res.render("hello_world", templateVars);
+  for (const key in users) {
+    if (users[key].email === email) {
+      console.log("Email already exists");
+      return res.send("Email already exists");
+    }
+  }
+  users[newID] = {
+    id: newID,
+    email,
+    password,
+  };
+  res.cookie("user_id", newID);
+  console.log(users);
+  res.redirect("/urls");
 });
 
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase, username: req.cookies["username"] };
+  const templateVars = {
+    urls: urlDatabase,
+    user_id: users[req.cookies["user_id"]]["email"],
+  };
   res.render("urls_index", templateVars);
 });
 //post request and generate random shortURL and store it to database, and redirect the page
@@ -60,18 +104,21 @@ app.post("/urls", (req, res) => {
 
 //manage login and cookies
 app.post("/login", (req, res) => {
-  res.cookie("username", req.body.username);
+  res.cookie("user_id", req.body.email);
   res.redirect("/urls");
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("username");
+  res.clearCookie("user_id");
   res.redirect("/urls");
 });
 
 //update
 app.get("/urls/new", (req, res) => {
-  const templateVars = { urls: urlDatabase, username: req.cookies["username"] };
+  const templateVars = {
+    urls: urlDatabase,
+    user_id: users[req.cookies["user_id"]]["email"],
+  };
   res.render("urls_new", templateVars);
 });
 //use the shortURL as a key to open the long url as a value
@@ -79,8 +126,9 @@ app.get("/urls/:shortURL", (req, res) => {
   const templateVars = {
     shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL],
-    username: req.cookies["username"],
+    user_id: users[req.cookies["user_id"]]["email"],
   };
+
   res.render("urls_show", templateVars);
 });
 
@@ -104,4 +152,5 @@ app.post("/urls/:shortURL", (req, res) => {
 //listening port 8080 and console log the port everytime we connect to the server
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}`);
+  console.log(users);
 });
