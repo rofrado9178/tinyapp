@@ -3,6 +3,9 @@ const { Template } = require("ejs");
 const express = require("express");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
+const bcrypt = require("bcryptjs");
+const salt = bcrypt.genSaltSync(10);
+
 const app = express();
 const PORT = 8080;
 
@@ -23,12 +26,12 @@ const users = {
   "userRandomID": {
     id: "userRandomID",
     email: "user@example.com",
-    password: "purple-monkey-dinosaur",
+    password: bcrypt.hashSync("purple-monkey-dinosaur", salt),
   },
   "user2RandomID": {
     id: "user2RandomID",
     email: "user2@example.com",
-    password: "dishwasher-funk",
+    password: bcrypt.hashSync("dishwasher-funk", salt),
   },
 };
 
@@ -54,6 +57,15 @@ const urlsForUser = (id, database) => {
   }
   console.log("***", userURLS);
   return userURLS;
+};
+
+const searchUserByEmail = (email) => {
+  for (const id in users) {
+    if (users[id].email === email) {
+      return users[id];
+    }
+  }
+  return null;
 };
 
 //handling /register path
@@ -93,7 +105,7 @@ app.post("/register", (req, res) => {
   users[newID] = {
     id: newID,
     email,
-    password,
+    password: bcrypt.hashSync(password, salt),
   };
   res.cookie("user_id", newID);
   console.log(users);
@@ -149,6 +161,8 @@ app.get("/login", (req, res) => {
 app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
+  const user = searchUserByEmail(email);
+  console.log("user", user);
   if (email === "" || password === "") {
     return res
       .status(403)
@@ -157,19 +171,17 @@ app.post("/login", (req, res) => {
       );
   }
 
-  for (const key in users) {
-    if (users[key].email === email && users[key].password === password) {
-      console.log(password);
-      res.cookie("user_id", users[key].id);
-      res.redirect("/urls");
-      break;
-    } else if (users[key].email !== email || users[key].password !== password) {
-      return res
-        .status(403)
-        .send(
-          "Email or Password is Incorrect! click here for <a href='/login'>login</a>"
-        );
-    }
+  if (user && bcrypt.compareSync(password, user.password)) {
+    console.log(password);
+    console.log("user Password:", user.password);
+    res.cookie("user_id", user.id);
+    res.redirect("/urls");
+  } else if (user.email !== email || user.password !== password) {
+    return res
+      .status(403)
+      .send(
+        "Email or Password is Incorrect! click here for <a href='/login'>login</a>"
+      );
   }
 });
 
