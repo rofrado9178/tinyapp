@@ -13,16 +13,26 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+      <% if(!user){ %>
+      <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+        <div class="navbar-nav">
+          <a class="nav-item nav-link" href="/register">Register</a>
+          <a class="nav-item nav-link" href="/login">Login</a>
+        </div>
+      </div>
+
+      <% } else {%>
       <div class="navbar-nav">
         <a class="nav-item nav-link" href="/urls">My URLs</a>
         <a class="nav-item nav-link" href="/urls/new">Create New URL</a>
       </div>
     </div>
-    <% if(user_id){ %>
-    <div class="form-group mx-sm-3 mb-2">Login as <%= user_id %></div>
+
+    <div class="form-group mx-sm-3 mb-2">Login as <%= user.email %></div>
     <form class="form-inline" action="/logout" method="POST">
       <button type="submit" class="btn btn-outline-dark mb-2">Logout</button>
     </form>
+
     <% } %>
   </nav>
 </header>
