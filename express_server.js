@@ -17,8 +17,8 @@ app.set("view engine", "ejs");
 
 //temporary database
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com",
+  "b2xVn2": { longURL: "http://www.lighthouselabs.ca", userID: "userRandomID" },
+  "9sm5xK": { longURL: "http://www.google.com", userID: "userRandomID" },
 };
 
 const users = {
@@ -73,7 +73,7 @@ app.post("/register", (req, res) => {
   const password = req.body.password;
   if (email === "" || password === "") {
     return res
-      .status(400)
+      .status(403)
       .send(
         "Email or Password cannot be empty!. click here for <a href='/register'>Register</a>"
       );
@@ -82,7 +82,11 @@ app.post("/register", (req, res) => {
   for (const key in users) {
     if (users[key].email === email) {
       console.log("Email already exists");
-      return res.status(400).send("Email already exists");
+      return res
+        .status(403)
+        .send(
+          "Email already exists. click here for <a href='/register'>Register</a>"
+        );
     }
   }
   users[newID] = {
@@ -107,15 +111,14 @@ app.get("/urls", (req, res) => {
     };
     res.render("urls_index", templateVars);
   } else {
-    return res
-      .status(400)
-      .send("You must login. click here to <a href='/login'>login</a>");
+    res.redirect("/login");
   }
 });
 
 app.post("/urls", (req, res) => {
   const shortRandomUrl = generateRandomString();
-  urlDatabase[shortRandomUrl] = req.body.longURL;
+  const userId = req.cookies["user_id"];
+  urlDatabase[shortRandomUrl] = { longURL: req.body.longURL, userID: userId };
   console.log(urlDatabase);
   res.redirect(`/urls/${shortRandomUrl}`);
 });
@@ -136,7 +139,7 @@ app.post("/login", (req, res) => {
   const password = req.body.password;
   if (email === "" || password === "") {
     return res
-      .status(400)
+      .status(403)
       .send(
         "Email or Password cannot be empty! click here for <a href='/login'>login</a>"
       );
@@ -149,7 +152,11 @@ app.post("/login", (req, res) => {
       res.redirect("/urls");
       break;
     } else if (users[key].email !== email || users[key].password !== password) {
-      return res.status(400).send("Email or Password is Incorrect!");
+      return res
+        .status(403)
+        .send(
+          "Email or Password is Incorrect! click here for <a href='/login'>login</a>"
+        );
     }
   }
 });
@@ -162,26 +169,36 @@ app.post("/logout", (req, res) => {
 //update
 app.get("/urls/new", (req, res) => {
   const userId = req.cookies["user_id"];
-  const templateVars = {
-    urls: urlDatabase,
-    user: users[userId],
-  };
-  res.render("urls_new", templateVars);
+  if (userId) {
+    console.log(userId);
+    const templateVars = {
+      urls: urlDatabase,
+      user: users[userId],
+      // user_id: users[req.cookies["user_id"]]["email"],
+    };
+    res.render("urls_new", templateVars);
+  } else {
+    res.redirect("/login");
+  }
 });
 //use the shortURL as a key to open the long url as a value
 app.get("/urls/:shortURL", (req, res) => {
   const userId = req.cookies["user_id"];
-  const templateVars = {
-    shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL],
-    user: users[userId],
-  };
-
-  res.render("urls_show", templateVars);
+  if (userId) {
+    const templateVars = {
+      shortURL: req.params.shortURL,
+      longURL: urlDatabase[req.params.shortURL].longURL,
+      user: users[userId],
+    };
+    console.log();
+    res.render("urls_show", templateVars);
+  } else {
+    res.redirect("/login");
+  }
 });
 
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
+  const longURL = urlDatabase[req.params.shortURL].longURL;
   res.redirect(longURL);
 });
 
@@ -193,7 +210,12 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 //update post
 app.post("/urls/:shortURL", (req, res) => {
-  urlDatabase[req.params.shortURL] = req.body.longURL;
+  const userId = req.cookies["user_id"];
+  urlDatabase[req.params.shortURL] = {
+    longURL: req.body.longURL,
+    userID: userId,
+  };
+  console.log();
   res.redirect(`/urls/${req.params.shortURL}`);
 });
 
