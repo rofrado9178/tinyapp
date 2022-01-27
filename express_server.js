@@ -6,10 +6,8 @@ const cookieParser = require("cookie-parser");
 const app = express();
 const PORT = 8080;
 
-//user body parser
+//using middleware
 app.use(bodyParser.urlencoded({ extended: true }));
-
-//use cookieparser
 app.use(cookieParser());
 
 //set engine so we can read ejs file from views folder and render it as html file
@@ -44,19 +42,6 @@ const generateRandomString = () => {
   }
   return alphanumeric;
 };
-//example
-// app.get("/", (req, res) => {
-//   res.send("Hello");
-// });
-
-// app.get("/urls.json", (req, res) => {
-//   res.json(urlDatabase);
-// });
-
-// app.get("/hello", (req, res) => {
-//   const templateVars = { greeting: "Hello World!" };
-//   res.render("hello_world", templateVars);
-// });
 
 //handling /register path
 app.get("/register", (req, res) => {
@@ -184,10 +169,11 @@ app.get("/urls/new", (req, res) => {
 //use the shortURL as a key to open the long url as a value
 app.get("/urls/:shortURL", (req, res) => {
   const userId = req.cookies["user_id"];
+  const shortUrl = req.params.shortURL;
   if (userId) {
     const templateVars = {
-      shortURL: req.params.shortURL,
-      longURL: urlDatabase[req.params.shortURL].longURL,
+      shortURL: shortUrl,
+      longURL: urlDatabase[shortUrl].longURL,
       user: users[userId],
     };
     console.log();
@@ -211,12 +197,13 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 //update post
 app.post("/urls/:shortURL", (req, res) => {
   const userId = req.cookies["user_id"];
-  urlDatabase[req.params.shortURL] = {
+  const shortUrl = req.params.shortURL;
+  urlDatabase[shortUrl] = {
     longURL: req.body.longURL,
     userID: userId,
   };
   console.log();
-  res.redirect(`/urls/${req.params.shortURL}`);
+  res.redirect(`/urls/${shortUrl}`);
 });
 
 //listening port 8080 and console log the port everytime we connect to the server
