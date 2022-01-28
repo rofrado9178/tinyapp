@@ -2,16 +2,28 @@
 const { Template } = require("ejs");
 const express = require("express");
 const bodyParser = require("body-parser");
-const cookieParser = require("cookie-parser");
+// const cookieParser = require("cookie-parser");
 const bcrypt = require("bcryptjs");
 const salt = bcrypt.genSaltSync(10);
+const cookieSession = require("cookie-session");
+const { v4: uuidv4 } = require("uuid");
+const searchUserByEmail = require("./helper");
 
 const app = express();
 const PORT = 8080;
 
 //using middleware
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cookieParser());
+// app.use(cookieParser());
+app.use(
+  cookieSession({
+    name: "session",
+    keys: [
+      "d630f505-af6b-424e-a221-3c4cd376ca80",
+      "5933f1c9-77cc-4b4a-a260-5adc129966b0",
+    ],
+  })
+);
 
 //set engine so we can read ejs file from views folder and render it as html file
 app.set("view engine", "ejs");
@@ -50,27 +62,15 @@ const urlsForUser = (id, database) => {
   let userURLS = {};
   for (const shortUrl in database) {
     if (database[shortUrl].userID === id) {
-      // console.log("dbUserId", database[shortUrl].userID);
-      // console.log("urlUserId", id);
       userURLS[shortUrl] = database[shortUrl];
     }
   }
-  console.log("***", userURLS);
   return userURLS;
-};
-
-const searchUserByEmail = (email) => {
-  for (const id in users) {
-    if (users[id].email === email) {
-      return users[id];
-    }
-  }
-  return null;
 };
 
 //handling /register path
 app.get("/register", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   if (userId) {
     res.redirect("/urls");
   }
@@ -84,6 +84,8 @@ app.post("/register", (req, res) => {
   const newID = generateRandomString();
   const email = req.body.email;
   const password = req.body.password;
+  const user = searchUserByEmail(email, users);
+  console.log("user.email:", user);
   if (email === "" || password === "") {
     return res
       .status(403)
@@ -92,29 +94,28 @@ app.post("/register", (req, res) => {
       );
   }
 
-  for (const key in users) {
-    if (users[key].email === email) {
-      console.log("Email already exists");
-      return res
-        .status(403)
-        .send(
-          "Email already exists. click here for <a href='/register'>Register</a>"
-        );
-    }
+  if (user.email) {
+    console.log("Email already exists");
+    return res
+      .status(403)
+      .send(
+        "Email already exists. click here for <a href='/register'>Register</a>"
+      );
   }
+
   users[newID] = {
     id: newID,
     email,
     password: bcrypt.hashSync(password, salt),
   };
-  res.cookie("user_id", newID);
+  req.session.user_id = newID;
   console.log(users);
   res.redirect("/urls");
 });
 
 //still get error message
 app.get("/", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   if (userId) {
     res.redirect("/urls");
   }
@@ -123,7 +124,7 @@ app.get("/", (req, res) => {
 
 // /urls path
 app.get("/urls", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   const userURLS = urlsForUser(userId, urlDatabase);
   const templateVars = {
     urls: userURLS,
@@ -133,13 +134,13 @@ app.get("/urls", (req, res) => {
   if (userId) {
     res.render("urls_index", templateVars);
   } else {
-    res.redirect("/login");
+    return res.status(404).send("Please <a href='/login'>Login<a>");
   }
 });
 
 app.post("/urls", (req, res) => {
   const shortRandomUrl = generateRandomString();
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   urlDatabase[shortRandomUrl] = { longURL: req.body.longURL, userID: userId };
   console.log(urlDatabase);
   res.redirect(`/urls/${shortRandomUrl}`);
@@ -147,7 +148,7 @@ app.post("/urls", (req, res) => {
 
 //manage login and cookies and logout
 app.get("/login", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   if (userId) {
     res.redirect("/urls");
   }
@@ -161,7 +162,7 @@ app.get("/login", (req, res) => {
 app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  const user = searchUserByEmail(email);
+  const user = searchUserByEmail(email, users);
   console.log("user", user);
   if (email === "" || password === "") {
     return res
@@ -174,7 +175,7 @@ app.post("/login", (req, res) => {
   if (user && bcrypt.compareSync(password, user.password)) {
     console.log(password);
     console.log("user Password:", user.password);
-    res.cookie("user_id", user.id);
+    req.session.user_id = user.id;
     res.redirect("/urls");
   } else if (user.email !== email || user.password !== password) {
     return res
@@ -186,13 +187,13 @@ app.post("/login", (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  req.session.user_id = null;
   res.redirect("/login");
 });
 
 //update
 app.get("/urls/new", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   if (userId) {
     console.log(userId);
     const templateVars = {
@@ -207,7 +208,7 @@ app.get("/urls/new", (req, res) => {
 });
 //use the shortURL as a key to open the long url as a value
 app.get("/urls/:shortURL", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   const shortUrl = req.params.shortURL;
   // const userURLS ;
 
@@ -218,7 +219,9 @@ app.get("/urls/:shortURL", (req, res) => {
         "The URL Does not exists, please check your URL Address.Url does not exists."
       );
   } else if (urlDatabase[shortUrl].userID !== userId) {
-    res.status(404).send("Cannot Access the URL.");
+    res
+      .status(404)
+      .send("Please <a href='/login'>Login</a> to Access the URL.");
   } else if (userId) {
     const templateVars = {
       shortURL: shortUrl,
@@ -246,37 +249,29 @@ app.get("/u/:shortURL", (req, res) => {
 
 //delete post
 app.post("/urls/:shortURL/delete", (req, res) => {
+  const userId = req.session.user_id;
+  if (!userId) {
+    return res.status(404).send("Does not have authorize to delete this url ");
+  }
   delete urlDatabase[req.params.shortURL];
   res.redirect("/urls");
 });
 
 //update post
 app.post("/urls/:shortURL", (req, res) => {
-  const userId = req.cookies["user_id"];
+  const userId = req.session.user_id;
   const shortUrl = req.params.shortURL;
   const userURLS = urlsForUser(userId, urlDatabase);
   console.log("userURLS:", userURLS);
   if (!userURLS[shortUrl]) {
     res.status(403).send("Does not have authorize to edit the url.");
-    // urlDatabase[shortUrl]["userID"]
-    // console.log(
-    //   "userURLS:",
-    //   userURLS,
-    //   "userId:",
-    //   userId,
-    //   "urlDatabase ",
-    //   urlDatabase
-    // );
   }
-  // urlDatabase[shortUrl] = {
-  //   longURL: req.body.longURL,
-  //   userID: userId,
-  // };
-  console.log("userURLS.id:", userURLS[shortUrl]["userID"]);
-  console.log("userURLS:", userURLS);
+
+  // console.log("userURLS.id:", userURLS[shortUrl]["userID"]);
+  // console.log("userURLS:", userURLS);
   urlDatabase[shortUrl].longURL = req.body.longURL;
   console.log(shortUrl);
-  res.redirect(`/urls/${shortUrl}`);
+  res.redirect(`/urls`);
 });
 
 //listening port 8080 and console log the port everytime we connect to the server
