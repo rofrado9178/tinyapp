@@ -2,7 +2,6 @@
 const { Template } = require("ejs");
 const express = require("express");
 const bodyParser = require("body-parser");
-// const cookieParser = require("cookie-parser");
 const bcrypt = require("bcryptjs");
 const salt = bcrypt.genSaltSync(10);
 const cookieSession = require("cookie-session");
@@ -14,7 +13,7 @@ const PORT = 8080;
 
 //using middleware
 app.use(bodyParser.urlencoded({ extended: true }));
-// app.use(cookieParser());
+//use cookie session
 app.use(
   cookieSession({
     name: "session",
@@ -57,7 +56,7 @@ const generateRandomString = () => {
   }
   return alphanumeric;
 };
-
+//looping url for user with matching id
 const urlsForUser = (id, database) => {
   let userURLS = {};
   for (const shortUrl in database) {
@@ -85,7 +84,7 @@ app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   const user = searchUserByEmail(email, users);
-  console.log("user.email:", user);
+
   if (email === "" || password === "") {
     return res
       .status(403)
@@ -95,7 +94,6 @@ app.post("/register", (req, res) => {
   }
 
   if (user) {
-    console.log("Email already exists");
     return res
       .status(403)
       .send(
@@ -109,11 +107,10 @@ app.post("/register", (req, res) => {
     password: bcrypt.hashSync(password, salt),
   };
   req.session.user_id = newID;
-  console.log(users);
   res.redirect("/urls");
 });
 
-//still get error message
+// "/" path will direct to /urls if login and to /login if user not login
 app.get("/", (req, res) => {
   const userId = req.session.user_id;
   if (userId) {
@@ -130,7 +127,7 @@ app.get("/urls", (req, res) => {
     urls: userURLS,
     user: users[userId],
   };
-  console.log(userURLS);
+  //urls path can be access if user login
   if (userId) {
     res.render("urls_index", templateVars);
   } else {
@@ -139,16 +136,17 @@ app.get("/urls", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
+  //generate unique id when create new url
   const shortRandomUrl = generateRandomString();
   const userId = req.session.user_id;
   urlDatabase[shortRandomUrl] = { longURL: req.body.longURL, userID: userId };
-  console.log(urlDatabase);
   res.redirect(`/urls/${shortRandomUrl}`);
 });
 
 //manage login and cookies and logout
 app.get("/login", (req, res) => {
   const userId = req.session.user_id;
+  //verify is user login or not, if login will redirect to urls if not will go to login page
   if (userId) {
     res.redirect("/urls");
   }
@@ -158,12 +156,13 @@ app.get("/login", (req, res) => {
   };
   res.render("login", templateVars);
 });
-
+//check credential of users
 app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   const user = searchUserByEmail(email, users);
-  console.log("user", user);
+
+  //check if empty email or password
   if (email === "" || password === "") {
     return res
       .status(403)
@@ -171,10 +170,8 @@ app.post("/login", (req, res) => {
         "Email or Password cannot be empty! click here for <a href='/login'>login</a>"
       );
   }
-
+  //check if user give correct email and password will lead to the urls page if not will go throw error
   if (user && bcrypt.compareSync(password, user.password)) {
-    console.log(password);
-    console.log("user Password:", user.password);
     req.session.user_id = user.id;
     res.redirect("/urls");
   } else if (user.email !== email || user.password !== password) {
@@ -185,15 +182,16 @@ app.post("/login", (req, res) => {
       );
   }
 });
-
+//logout users and delete cookies
 app.post("/logout", (req, res) => {
   req.session.user_id = null;
   res.redirect("/login");
 });
 
-//update
+//update urls
 app.get("/urls/new", (req, res) => {
   const userId = req.session.user_id;
+  //check user is login or not, only login user can update
   if (userId) {
     console.log(userId);
     const templateVars = {
@@ -235,7 +233,7 @@ app.get("/urls/:shortURL", (req, res) => {
   }
   console.log(shortUrl);
 });
-
+//will redirect user to longurl
 app.get("/u/:shortURL", (req, res) => {
   const shortUrl = req.params.shortURL;
   if (!urlDatabase[shortUrl]) {
@@ -250,7 +248,7 @@ app.get("/u/:shortURL", (req, res) => {
 //delete post
 app.post("/urls/:shortURL/delete", (req, res) => {
   const userId = req.session.user_id;
-
+  //only url that belong to the login user can be delete
   if (!userId) {
     return res.status(404).send("Does not have authorize to delete this url ");
   }
@@ -263,17 +261,14 @@ app.post("/urls/:shortURL", (req, res) => {
   const userId = req.session.user_id;
   const shortUrl = req.params.shortURL;
   const userURLS = urlsForUser(userId, urlDatabase);
-  console.log("userURLS:", userURLS);
   if (!userURLS[shortUrl]) {
     res.status(403).send("Does not have authorize to edit the url.");
   }
   urlDatabase[shortUrl].longURL = req.body.longURL;
-  console.log(shortUrl);
   res.redirect(`/urls`);
 });
 
 //listening port 8080 and console log the port everytime we connect to the server
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}`);
-  console.log(users);
 });
