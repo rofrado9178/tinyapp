@@ -184,7 +184,7 @@ app.post("/login", (req, res) => {
 });
 //logout users and delete cookies
 app.post("/logout", (req, res) => {
-  req.session.user_id = null;
+  req.session = null;
   res.redirect("/login");
 });
 
