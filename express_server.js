@@ -94,7 +94,7 @@ app.post("/register", (req, res) => {
       );
   }
 
-  if (user.email) {
+  if (user) {
     console.log("Email already exists");
     return res
       .status(403)
@@ -250,6 +250,7 @@ app.get("/u/:shortURL", (req, res) => {
 //delete post
 app.post("/urls/:shortURL/delete", (req, res) => {
   const userId = req.session.user_id;
+
   if (!userId) {
     return res.status(404).send("Does not have authorize to delete this url ");
   }
@@ -266,9 +267,6 @@ app.post("/urls/:shortURL", (req, res) => {
   if (!userURLS[shortUrl]) {
     res.status(403).send("Does not have authorize to edit the url.");
   }
-
-  // console.log("userURLS.id:", userURLS[shortUrl]["userID"]);
-  // console.log("userURLS:", userURLS);
   urlDatabase[shortUrl].longURL = req.body.longURL;
   console.log(shortUrl);
   res.redirect(`/urls`);

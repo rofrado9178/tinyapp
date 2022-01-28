@@ -4,7 +4,6 @@ const searchUserByEmail = (email, database) => {
       return database[id];
     }
   }
-  return false;
 };
 
 module.exports = searchUserByEmail;
